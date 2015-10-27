@@ -17,11 +17,16 @@ packages = [
     "github3.search",
 ]
 
+SNI_requirements = [
+    'pyOpenSSL',
+    'ndg-httpsclient',
+    'pyasn1'
+]
+
 kwargs['tests_require'] = ['betamax >=0.2.0', 'pytest',
                            'betamax-matchers>=0.1.0']
 if sys.version_info < (3, 0):
     kwargs['tests_require'].append('unittest2 ==0.5.1')
-    requires.extend(["pyOpenSSL", "ndg-httpsclient", "pyasn1"])
 if sys.version_info < (3, 3):
     kwargs['tests_require'].append('mock ==1.0.1')
 
@@ -32,7 +37,7 @@ if sys.argv[-1] in ("submit", "publish"):
 requires.extend(["requests >= 2.0", "uritemplate.py >= 0.2.0"])
 
 __version__ = ''
-with open('github3/__init__.py', 'r') as fd:
+with open('github3/__about__.py', 'r') as fd:
     reg = re.compile(r'__version__ = [\'"]([^\'"]*)[\'"]')
     for line in fd:
         m = reg.match(line)
@@ -83,7 +88,10 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: Implementation :: CPython',
     ],
-    extras_require={'test': kwargs['tests_require']},
+    extras_require={
+        'test': kwargs['tests_require'],
+        ';python_version<="2.7"': SNI_requirements,
+    },
     cmdclass={'test': PyTest},
     **kwargs
 )

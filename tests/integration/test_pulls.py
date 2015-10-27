@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Integration tests for methods implemented on PullRequest."""
+import tempfile
 
 import github3
+from github3 import repos
 
 from .helper import IntegrationHelper
 
@@ -24,6 +26,15 @@ class TestPullRequest(IntegrationHelper):
         with self.recorder.use_cassette(cassette_name):
             p = self.get_pull_request(num=241)
             assert p.close() is True
+
+    def test_create_comment(self):
+        """Show that a user can create a comment on a PR."""
+        self.basic_login()
+        cassette_name = self.cassette_name('create_comment')
+        with self.recorder.use_cassette(cassette_name):
+            p = self.get_pull_request(num=423)
+            comment = p.create_comment('Testing pull request comment')
+        assert isinstance(comment, github3.issues.comment.IssueComment)
 
     def test_commits(self):
         """Show that one can iterate over a PR's commits."""
@@ -70,6 +81,14 @@ class TestPullRequest(IntegrationHelper):
         with self.recorder.use_cassette(cassette_name):
             p = self.get_pull_request()
             assert p.is_merged() is True
+
+    def test_issue(self):
+        """Show that one can retrieve the associated issue of a PR."""
+        cassette_name = self.cassette_name('issue')
+        with self.recorder.use_cassette(cassette_name):
+            p = self.get_pull_request()
+            issue = p.issue()
+            assert isinstance(issue, github3.issues.Issue)
 
     def test_issue_comments(self):
         """Show that one can iterate over a PR's issue comments."""
@@ -127,3 +146,29 @@ class TestReviewComment(IntegrationHelper):
             c = next(p.review_comments())
             comment = c.reply('Replying to comments is fun.')
         assert isinstance(comment, github3.pulls.ReviewComment)
+
+
+class TestPullFile(IntegrationHelper):
+    """Integration tests for the PullFile object."""
+    def get_pull_request_file(self, owner, repo, pull_number, filename):
+        p = self.gh.pull_request(owner, repo, pull_number)
+
+        for pull_file in p.files():
+            if pull_file.filename == filename:
+                break
+        else:
+            assert False, "Could not find '{0}'".format(filename)
+
+        return pull_file
+
+    def test_contents(self):
+        """Show that a user can retrieve the contents of a PR file."""
+        cassette_name = self.cassette_name('contents')
+        with self.recorder.use_cassette(cassette_name):
+            pull_file = self.get_pull_request_file(
+                owner='sigmavirus24', repo='github3.py', pull_number=286,
+                filename='github3/pulls.py'
+            )
+            contents = pull_file.contents()
+            assert isinstance(contents, repos.contents.Contents)
+            assert contents.decoded != b''

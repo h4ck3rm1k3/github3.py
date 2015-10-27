@@ -2,10 +2,10 @@
 import pytest
 
 from .helper import (UnitHelper, UnitIteratorHelper, create_url_helper,
-                     create_example_data_helper)
+                     create_example_data_helper, mock)
 
 from github3 import GitHubError
-from github3.pulls import PullRequest, ReviewComment
+from github3 import pulls
 
 get_pr_example_data = create_example_data_helper('pull_request_example')
 
@@ -16,10 +16,9 @@ url_for = create_url_helper(
 
 
 class TestPullRequest(UnitHelper):
-
     """PullRequest unit tests."""
 
-    described_class = PullRequest
+    described_class = pulls.PullRequest
     example_data = get_pr_example_data()
 
     def test_close(self):
@@ -35,6 +34,15 @@ class TestPullRequest(UnitHelper):
             }
         )
 
+    def test_create_comment(self):
+        """Show that a user can comment on a PR."""
+        self.instance.create_comment('body')
+
+        self.post_called_with(
+            url_for('comments').replace('pulls', 'issues'),
+            data={'body': 'body'}
+        )
+
     def test_create_review_comment(self):
         """Verify the request to create a review comment on a PR diff."""
         self.instance.create_review_comment('body', 'sha', 'path', 6)
@@ -45,7 +53,7 @@ class TestPullRequest(UnitHelper):
                 'body': 'body',
                 'commit_id': 'sha',
                 'path': 'path',
-                'position': '6'
+                'position': 6
             }
         )
 
@@ -64,11 +72,21 @@ class TestPullRequest(UnitHelper):
 
         self.session.get.assert_called_once_with(url_for('merge'))
 
+    def test_issue(self):
+        """Show that a user can retrieve the associated issue of a PR."""
+        self.instance.issue()
+
+        self.session.get.assert_called_once_with(
+            url_for().replace('pulls', 'issues')
+        )
+
     def test_merge(self):
         """Show that a user can merge a Pull Request."""
         self.instance.merge()
 
-        self.session.put.assert_called_once_with(url_for('merge'), data=None)
+        self.session.put.assert_called_once_with(
+	    url_for('merge'),
+	    data='{"commit_message": ""}')
 
     def test_patch(self):
         """Show that a user can fetch the patch from a Pull Request."""
@@ -109,10 +127,9 @@ class TestPullRequest(UnitHelper):
 
 
 class TestPullRequestRequiresAuthentication(UnitHelper):
-
     """PullRequest unit tests that demonstrate which methods require auth."""
 
-    described_class = PullRequest
+    described_class = pulls.PullRequest
     example_data = get_pr_example_data()
 
     def after_setup(self):
@@ -146,10 +163,9 @@ class TestPullRequestRequiresAuthentication(UnitHelper):
 
 
 class TestPullRequestIterator(UnitIteratorHelper):
-
     """Test PullRequest methods that return Iterators."""
 
-    described_class = PullRequest
+    described_class = pulls.PullRequest
     example_data = get_pr_example_data()
 
     def test_commits(self):
@@ -198,10 +214,9 @@ class TestPullRequestIterator(UnitIteratorHelper):
 
 
 class TestReviewComment(UnitHelper):
-
     """Unit tests for the ReviewComment class."""
 
-    described_class = ReviewComment
+    described_class = pulls.ReviewComment
     example_data = {
         "url": ("https://api.github.com/repos/octocat/Hello-World/pulls/"
                 "comments/1"),
@@ -276,3 +291,34 @@ class TestReviewComment(UnitHelper):
 
         with pytest.raises(GitHubError):
             self.instance.reply('')
+
+
+class TestPullFile(UnitHelper):
+    """Unit tests for the PullFile class."""
+
+    described_class = pulls.PullFile
+    example_data = {
+        "sha": "bbcd538c8e72b8c175046e27cc8f907076331401",
+        "filename": "file1.txt",
+        "status": "added",
+        "additions": 103,
+        "deletions": 21,
+        "changes": 124,
+        "blob_url": ("https://github.com/octocat/Hello-World/blob/"
+                     "6dcb09b5b57875f334f61aebed695e2e4193db5e/file1.txt"),
+        "raw_url": ("https://github.com/octocat/Hello-World/raw/"
+                    "6dcb09b5b57875f334f61aebed695e2e4193db5e/file1.txt"),
+        "contents_url": ("https://api.github.com/repos/octocat/Hello-World/"
+                         "contents/file1.txt?ref=6dcb09b5b57875f334f61aebed"
+                         "695e2e4193db5e"),
+        "patch": ("@@ -132,7 +132,7 @@ module Test @@ -1000,7 +1000,7 @@"
+                  " module Test")
+    }
+
+    def test_contents(self):
+        """Verify the request made to fetch a pull request file contents."""
+        self.instance.contents()
+
+        self.session.get.assert_called_once_with(
+            self.example_data['contents_url']
+        )

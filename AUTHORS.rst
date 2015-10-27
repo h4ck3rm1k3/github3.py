@@ -84,3 +84,25 @@ Contributors
 - Bryce Boe (@bboe)
 
 - Ryan Weald (@rweald)
+
+- Lars Holm Nielsen (@larshankat)
+
+- Ryan Pitts (@ryanpitts)
+
+- Jürgen Hermann (@jhermann)
+
+- Antoine Giraudmaillet (@antoine-g)
+
+- Paulus Schoutsen (@balloob)
+
+- Nolan Bruabker (@nrb)
+
+- Marcin Wielgoszewski (@mwielgoszewski)
+
+- Omri Harel (@omriharel)
+
+- Noel Lee (@noellee)
+
+- Sourav Singh(@souravsingh)
+
+- Matt Chung (@itsmemattchung)

@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from github3 import GitHubError
+from github3.null import NullObject
 from github3.repos.repo import Repository
 
 from .helper import (UnitHelper, UnitIteratorHelper, create_url_helper)
@@ -136,6 +137,21 @@ class TestRepository(UnitHelper):
     described_class = Repository
     example_data = repo_example_data
 
+    def test_add_collaborator(self):
+        """Verify the request to add a collaborator to a repository."""
+        self.instance.add_collaborator('sigmavirus24')
+
+        self.session.put.assert_called_once_with(
+            url_for('collaborators/sigmavirus24')
+        )
+
+    def test_add_null_collaborator(self):
+        """Verify no request is made when adding `None` as a collaborator."""
+        self.instance.add_collaborator(None)
+        self.instance.add_collaborator(NullObject())
+
+        assert self.session.put.called is False
+
     def test_asset(self):
         """Test retrieving an asset uses the right headers.
 
@@ -202,6 +218,18 @@ class TestRepository(UnitHelper):
             url_for('contents/path/to/directory'),
             params={'ref': 'some-sha'}
         )
+
+    def test_deployment(self):
+        """Verify the request made to retrieve a deployment."""
+        self.instance.deployment(10)
+
+        self.session.get.assert_called_once_with(url_for('deployments/10'))
+
+    def test_deployment_requires_positive_int(self):
+        """Verify that a positive deployment id is required."""
+        self.instance.deployment(-10)
+
+        assert self.session.get.called is False
 
     def test_file_contents(self):
         """Verify the request made to retrieve a dictionary's contents."""
@@ -309,17 +337,6 @@ class TestRepositoryIterator(UnitIteratorHelper):
 
         self.session.get.assert_called_once_with(
             url_for('comments'),
-            params={'per_page': 100},
-            headers={}
-        )
-
-    def test_comments_on_commit(self):
-        """Test the ability to iterate over comments on a specific commit."""
-        i = self.instance.comments_on_commit('some-sha')
-        self.get_next(i)
-
-        self.session.get.assert_called_once_with(
-            url_for('commits/some-sha/comments'),
             params={'per_page': 100},
             headers={}
         )
@@ -674,6 +691,11 @@ class TestRepositoryRequiresAuth(UnitHelper):
     def after_setup(self):
         """Set-up the session to not be authenticated."""
         self.session.has_auth.return_value = False
+
+    def test_add_collaborator(self):
+        """Verify that adding a collaborator requires authentication."""
+        with pytest.raises(GitHubError):
+            self.instance.add_collaborator('foo')
 
     def test_hooks(self):
         """Show that a user must be authenticated to list hooks."""

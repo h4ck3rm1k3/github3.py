@@ -1,12 +1,24 @@
 """Integration tests for Repositories."""
 import github3
+import github3.exceptions as exc
 
-from .helper import IntegrationHelper
+import pytest
+
+from . import helper
 
 
-class TestRepository(IntegrationHelper):
+class TestRepository(helper.IntegrationHelper):
 
     """Integration tests for the Repository object."""
+
+    def test_add_collaborator(self):
+        """Test the ability to add a collaborator to a repository."""
+        self.basic_login()
+        cassette_name = self.cassette_name('add_collaborator')
+        with self.recorder.use_cassette(cassette_name):
+            repository = self.gh.repository('testgh3', 'collaborators')
+            assert repository
+            assert repository.add_collaborator('sigmavirus24')
 
     def test_assignees(self):
         """Test the ability to retrieve assignees of issues on a repo."""
@@ -52,17 +64,6 @@ class TestRepository(IntegrationHelper):
             repository = self.gh.repository('sigmavirus24', 'github3.py')
             assert repository is not None
             for comment in repository.comments():
-                assert isinstance(comment, github3.repos.comment.RepoComment)
-
-    def test_comments_on_commit(self):
-        """Test the ability to retrieve the comments on a commit."""
-        sha = '65c0c7d58b3ef09a0b3d5f9779228f9d1a5ad552'
-        cassette_name = self.cassette_name('comments_on_commit')
-        with self.recorder.use_cassette(cassette_name):
-            repository = self.gh.repository('glynnis',
-                                            'Madison-Women-in-Tech')
-            assert repository is not None
-            for comment in repository.comments_on_commit(sha):
                 assert isinstance(comment, github3.repos.comment.RepoComment)
 
     def test_commit_activity(self):
@@ -147,6 +148,16 @@ class TestRepository(IntegrationHelper):
             repository = self.gh.repository('sigmavirus24', 'my-new-repo')
             assert repository is not None
             assert repository.delete() is True
+
+    def test_deployment(self):
+        """Test that a deployment can be retrieved by its id."""
+        cassette_name = self.cassette_name('deployment')
+        with self.recorder.use_cassette(cassette_name):
+            repository = self.gh.repository('sigmavirus24', 'github3.py')
+            assert repository is not None
+            deployment = repository.deployment(797)
+
+        assert isinstance(deployment, github3.repos.deployment.Deployment)
 
     def test_deployments(self):
         """Test that a repository's deployments may be retrieved."""
@@ -410,6 +421,15 @@ class TestRepository(IntegrationHelper):
         assert len(references) > 0
         for ref in references:
             assert isinstance(ref, github3.git.Reference)
+
+    def test_refs_raises_unprocessable_exception(self):
+        """Verify github3.exceptions.UnprocessableResponseBody is raised."""
+        cassette_name = self.cassette_name('invalid_refs')
+        with self.recorder.use_cassette(cassette_name):
+            repository = self.gh.repository('sigmavirus24', 'github3.py')
+            assert repository is not None
+            with pytest.raises(exc.UnprocessableResponseBody):
+                list(repository.refs('heads/develop'))
 
     def test_stargazers(self):
         """Test the ability to retrieve the stargazers on a repository."""

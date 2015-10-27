@@ -5,7 +5,7 @@ import json
 from ..decorators import requires_auth
 from ..exceptions import error_for
 from ..models import GitHubCore
-from ..utils import stream_response_to_file
+from .. import utils
 from uritemplate import URITemplate
 
 
@@ -153,6 +153,7 @@ class Release(GitHubCore):
 
 
 class Asset(GitHubCore):
+
     def _update_attributes(self, asset):
         self._api = asset.get('url')
         #: Content-Type provided when the asset was created
@@ -188,7 +189,8 @@ class Asset(GitHubCore):
             written in the current directory.
             it can take a file-like object as well
         :type path: str, file
-        :returns: bool -- True if successful, False otherwise
+        :returns: name of the file, if successful otherwise ``None``
+        :rtype: str
         """
         headers = {
             'Accept': 'application/octet-stream'
@@ -207,9 +209,22 @@ class Asset(GitHubCore):
                                  headers=headers)
 
         if self._boolean(resp, 200, 404):
-            stream_response_to_file(resp, path)
-            return True
-        return False
+            return utils.stream_response_to_file(resp, path)
+        return None
+
+    @requires_auth
+    def delete(self):
+        """Delete this asset if the user has push access.
+
+        :returns: True if successful; False if not successful
+        :rtype: boolean
+        """
+        url = self._api
+        return self._boolean(
+            self._delete(url, headers=Release.CUSTOM_HEADERS),
+            204,
+            404
+        )
 
     def edit(self, name, label=None):
         """Edit this asset.

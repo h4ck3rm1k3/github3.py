@@ -127,6 +127,10 @@ class Repository(GitHubCore):
 
         #: Is this repository private?
         self.private = repo.get('private')
+
+        #: Permissions for this repository
+        self.permissions = repo.get('permissions')
+
         #: ``datetime`` object representing the last time commits were pushed
         #: to the repository.
         self.pushed_at = self._strptime(repo.get('pushed_at'))
@@ -454,21 +458,6 @@ class Repository(GitHubCore):
             :class:`RepoComment <github3.repos.comment.RepoComment>`\ s
         """
         url = self._build_url('comments', base_url=self._api)
-        return self._iter(int(number), url, RepoComment, etag=etag)
-
-    def comments_on_commit(self, sha, number=-1, etag=None):
-        r"""Iterate over comments for a single commit.
-
-        :param sha: (required), sha of the commit to list comments on
-        :type sha: str
-        :param int number: (optional), number of comments to return. Default:
-            -1 returns all comments
-        :param str etag: (optional), ETag from a previous request to the same
-            endpoint
-        :returns: generator of
-            :class:`RepoComment <github3.repos.comment.RepoComment>`\ s
-        """
-        url = self._build_url('commits', sha, 'comments', base_url=self._api)
         return self._iter(int(number), url, RepoComment, etag=etag)
 
     def commit(self, sha):
@@ -951,7 +940,7 @@ class Repository(GitHubCore):
 
     @requires_auth
     def create_status(self, sha, state, target_url=None, description=None,
-                      context=None):
+                      context='default'):
         """Create a status object on a commit.
 
         :param str sha: (required), SHA of the commit to create the status on
@@ -967,7 +956,7 @@ class Repository(GitHubCore):
         json = {}
         if sha and state:
             data = {'state': state, 'target_url': target_url,
-                    'description': description, 'context': None}
+                    'description': description, 'context': context}
             url = self._build_url('statuses', sha, base_url=self._api)
             self._remove_none(data)
             json = self._json(self._post(url, data=data), 201)
@@ -1051,6 +1040,18 @@ class Repository(GitHubCore):
         """
         url = self._build_url('subscription', base_url=self._api)
         return self._boolean(self._delete(url), 204, 404)
+
+    def deployment(self, id):
+        """Retrieve the deployment identified by ``id``.
+
+        :param int id: (required), id for deployments.
+        :returns: :class:`~github3.repos.deployment.Deployment`
+        """
+        json = None
+        if int(id) > 0:
+            url = self._build_url('deployments', str(id), base_url=self._api)
+            json = self._json(self._get(url), 200)
+        return self._instance_or_null(Deployment, json)
 
     def deployments(self, number=-1, etag=None):
         r"""Iterate over deployments for this repository.
